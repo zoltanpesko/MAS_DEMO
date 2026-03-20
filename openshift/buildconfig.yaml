@@ -1,0 +1,34 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: mas-vendor-page
+  labels:
+    app: mas-vendor-page
+    app.kubernetes.io/name: mas-vendor-page
+    app.kubernetes.io/component: frontend
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: mas-vendor-page:latest
+  source:
+    type: Git
+    git:
+      uri: https://github.com/your-org/your-repo.git
+      ref: main
+    contextDir: frontend
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+      noCache: false
+      env:
+      - name: NODE_ENV
+        value: production
+  triggers:
+  - type: ConfigChange
+  - type: ImageChange
+  successfulBuildsHistoryLimit: 5
+  failedBuildsHistoryLimit: 5
+
+# Made with Bob

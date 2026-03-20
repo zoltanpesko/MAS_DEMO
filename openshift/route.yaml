@@ -1,0 +1,21 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: mas-vendor-page
+  labels:
+    app: mas-vendor-page
+    app.kubernetes.io/name: mas-vendor-page
+    app.kubernetes.io/component: frontend
+spec:
+  to:
+    kind: Service
+    name: mas-vendor-page
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+
+# Made with Bob
