@@ -14,7 +14,7 @@ spec:
   source:
     type: Git
     git:
-      uri: https://github.com/your-org/your-repo.git
+      uri: https://github.com/zoltanpesko/MAS_DEMO.git
       ref: main
     contextDir: frontend
   strategy:
