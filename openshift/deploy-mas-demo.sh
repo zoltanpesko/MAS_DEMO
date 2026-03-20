@@ -87,13 +87,25 @@ echo "Step 2: Creating BuildConfig..."
 oc apply -f buildconfig.yaml
 
 echo ""
-echo "Step 3: Starting build..."
+echo "Step 3: Checking for existing builds..."
 echo ""
 
-# Start the build
-BUILD_NAME=$(oc start-build mas-vendor-page -o name)
-echo "Build started: $BUILD_NAME"
-echo ""
+# Check if there's already a running or pending build
+EXISTING_BUILD=$(oc get builds -l buildconfig=mas-vendor-page --field-selector=status.phase!=Complete,status.phase!=Failed,status.phase!=Cancelled -o name 2>/dev/null | head -1)
+
+if [ -n "$EXISTING_BUILD" ]; then
+    echo "Found existing build: $EXISTING_BUILD"
+    BUILD_NAME="$EXISTING_BUILD"
+    BUILD_STATUS=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null)
+    echo "Build status: $BUILD_STATUS"
+    echo "Using existing build instead of starting new one"
+    echo ""
+else
+    echo "No running builds found, starting new build..."
+    BUILD_NAME=$(oc start-build mas-vendor-page -o name)
+    echo "Build started: $BUILD_NAME"
+    echo ""
+fi
 
 # Wait a moment for the build pod to be created
 sleep 3
@@ -120,30 +132,49 @@ else
     
     while [ $WAITED -lt $MAX_WAIT ]; do
         # Check pod status first (more accurate than build resource status)
-        POD_STATUS=$(oc get pod "$BUILD_POD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+        POD_STATUS=$(oc get pod "$BUILD_POD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
         BUILD_PHASE=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
         
-        if [ "$POD_STATUS" = "Running" ] || [ "$POD_STATUS" = "Succeeded" ] || [ "$BUILD_PHASE" = "Complete" ] || [ "$BUILD_PHASE" = "Failed" ]; then
+        # Show actual pod status which is more accurate
+        if [ "$POD_STATUS" = "Running" ]; then
             echo ""
-            echo "Build pod status: $POD_STATUS"
+            echo "✓ Build pod is running: $BUILD_POD_NAME"
+            break
+        elif [ "$POD_STATUS" = "Succeeded" ] || [ "$BUILD_PHASE" = "Complete" ]; then
+            echo ""
+            echo "✓ Build already completed!"
+            break
+        elif [ "$POD_STATUS" = "Failed" ] || [ "$BUILD_PHASE" = "Failed" ]; then
+            echo ""
+            echo "✗ Build failed!"
             break
         fi
         
         SPINNER_CHAR=$(echo "$SPINNER_CHARS" | cut -c$((SPIN_IDX + 1)))
-        printf "\r$SPINNER_CHAR Build pod: $POD_STATUS | Build: $BUILD_PHASE (${WAITED}s)"
+        printf "\r$SPINNER_CHAR Waiting for build pod... (${WAITED}s)"
         sleep 2
         WAITED=$((WAITED + 2))
         SPIN_IDX=$(( (SPIN_IDX + 1) % 10 ))
     done
 
+    # Get final status
     BUILD_PHASE=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
-    POD_STATUS=$(oc get pod "$BUILD_POD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
-    echo "Build phase: $BUILD_PHASE | Pod status: $POD_STATUS"
+    POD_STATUS=$(oc get pod "$BUILD_POD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+    
+    echo ""
+    echo "Current status:"
+    echo "  Build: $BUILD_PHASE"
+    echo "  Pod: $POD_STATUS"
     echo ""
 
     if [ "$BUILD_PHASE" = "Failed" ] || [ "$POD_STATUS" = "Failed" ]; then
-        echo "✗ Error: Build failed to start"
+        echo "✗ Error: Build failed"
+        echo ""
+        echo "Build details:"
         oc describe "$BUILD_NAME"
+        echo ""
+        echo "Pod details:"
+        oc describe pod "$BUILD_POD_NAME" 2>/dev/null || echo "Pod not found"
         exit 1
     fi
 
