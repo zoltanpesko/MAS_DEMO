@@ -71,4 +71,5 @@ pids
 
 # Temporary files
 tmp/
-temp/
+temp/archive/
+_archive/
