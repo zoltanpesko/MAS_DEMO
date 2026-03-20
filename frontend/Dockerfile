@@ -1,5 +1,5 @@
-# Multi-stage build for Next.js application using Red Hat UBI
-FROM registry.access.redhat.com/ubi9/nodejs-18:latest AS base
+# Multi-stage build for Next.js application using Red Hat UBI with Node.js 20
+FROM registry.access.redhat.com/ubi9/nodejs-20:latest AS base
 
 USER root
 

@@ -52,33 +52,49 @@ A modern Next.js application for managing Maximo Application Suite (MAS) resourc
 
 ## ⚡ Quick Start - Deploy to OpenShift
 
-### Step 1: Login to OpenShift
+### Step 1: Download the Project
+
+**Option A - Clone with Git:**
+```bash
+git clone https://github.com/zoltanpesko/MAS_DEMO.git
+cd MAS_DEMO
+```
+
+**Option B - Download ZIP:**
+1. Go to https://github.com/zoltanpesko/MAS_DEMO
+2. Click the green "Code" button
+3. Click "Download ZIP"
+4. Extract the ZIP file
+5. Open terminal in the extracted folder
+
+### Step 2: Login to OpenShift
 
 ```bash
 oc login --token=<your-token> --server=<your-server>
 ```
 
-### Step 2: Clone and Deploy
+### Step 3: Deploy
 
 ```bash
-# Clone the repository
-git clone https://github.com/zoltanpesko/MAS_DEMO.git
-cd MAS_DEMO
-
-# Deploy to OpenShift
 cd openshift
 ./deploy-mas-demo.sh
 ```
 
-### Step 3: Access Your Application
+The script will:
+- ✅ Build the application from GitHub
+- ✅ Deploy to mas-demo project
+- ✅ Create HTTPS route
+- ✅ Display the application URL
 
-After deployment completes, get your application URL:
+### Step 4: Access Your Application
+
+After deployment completes, visit the URL shown by the script, or get it with:
 
 ```bash
 oc get route mas-vendor-page -n mas-demo
 ```
 
-Visit the URL and configure your MAS connection in the UI.
+Then configure your MAS connection in the UI.
 
 ## 🌐 Configuration
 
