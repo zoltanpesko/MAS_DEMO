@@ -11,7 +11,6 @@ import {
   Download,
   Code2,
   FileCode,
-  Play,
   X,
   Check,
   Plus
