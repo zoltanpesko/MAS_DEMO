@@ -32,14 +32,52 @@ fi
 echo "Current project: $(oc project -q)"
 echo ""
 
-# Prompt for confirmation
-read -p "Deploy to mas-demo project? (y/n) " -n 1 -r
-echo ""
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Deployment cancelled"
-    exit 0
+# Check if resources already exist
+EXISTING_RESOURCES=$(oc get all,route -l app=mas-vendor-page 2>/dev/null | grep -v "No resources found" || echo "")
+
+if [ -n "$EXISTING_RESOURCES" ]; then
+    echo "=========================================="
+    echo "Existing deployment found!"
+    echo "=========================================="
+    echo ""
+    echo "Current resources:"
+    oc get all,route -l app=mas-vendor-page
+    echo ""
+    read -p "Delete existing deployment and redeploy? (y/n) " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo ""
+        echo "Cleaning up existing deployment..."
+        echo "Deleting all resources with label app=mas-vendor-page..."
+        
+        # Delete in specific order to avoid issues
+        oc delete route mas-vendor-page 2>/dev/null || echo "No route to delete"
+        oc delete service mas-vendor-page 2>/dev/null || echo "No service to delete"
+        oc delete deployment mas-vendor-page 2>/dev/null || echo "No deployment to delete"
+        oc delete bc mas-vendor-page 2>/dev/null || echo "No buildconfig to delete"
+        oc delete builds -l app=mas-vendor-page 2>/dev/null || echo "No builds to delete"
+        oc delete is mas-vendor-page 2>/dev/null || echo "No imagestream to delete"
+        
+        echo "Cleanup complete!"
+        echo ""
+    else
+        echo "Deployment cancelled"
+        exit 0
+    fi
+else
+    # Prompt for confirmation for new deployment
+    read -p "Deploy to mas-demo project? (y/n) " -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Deployment cancelled"
+        exit 0
+    fi
 fi
 
+echo ""
+echo "=========================================="
+echo "Starting Fresh Deployment"
+echo "=========================================="
 echo ""
 echo "Step 1: Creating ImageStream..."
 oc apply -f imagestream.yaml
