@@ -5,7 +5,6 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get headers from the request
     const apiKey = request.headers.get('x-mas-api-key');
     const serverUrl = request.headers.get('x-mas-server-url');
 
@@ -16,15 +15,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get page size from query params, default to 10
     const url = new URL(request.url);
     const pageSize = url.searchParams.get('pageSize') || '10';
     
-    // Forward the request to the Maximo server using MXAPIASSET endpoint
-    // API key is passed as a query parameter
     const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIASSET?apikey=${apiKey}&lean=1&oslc.select=assetnum,description,status,siteid,location,assettype,manufacturer,serialnum,installdate&oslc.pageSize=${pageSize}`;
-
-    console.log('Fetching from Maximo:', maximoUrl.replace(apiKey, '***'));
 
     const response = await fetch(maximoUrl, {
       method: 'GET',
@@ -34,9 +28,6 @@ export async function GET(request: NextRequest) {
     });
 
     const responseText = await response.text();
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-    console.log('Response body (first 500 chars):', responseText.substring(0, 500));
 
     if (!response.ok) {
       console.error('Maximo API error:', response.status, responseText);
@@ -50,11 +41,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Try to parse JSON
     let data;
     try {
       data = JSON.parse(responseText);
-      console.log('Successfully fetched assets from Maximo');
     } catch (parseError) {
       console.error('Failed to parse JSON response:', parseError);
       return NextResponse.json(
@@ -85,5 +74,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-// Made with Bob

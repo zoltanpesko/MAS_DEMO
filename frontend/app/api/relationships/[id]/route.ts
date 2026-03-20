@@ -20,12 +20,9 @@ export async function PATCH(
       );
     }
 
-    // Encode the relationship name for the URL
     const encodedId = Buffer.from(relationshipName).toString('base64');
     const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIDB/${encodedId}`;
     const url = `${maximoUrl}?apikey=${apiKey}`;
-
-    console.log(`Updating relationship ${relationshipName} in Maximo`);
 
     const updateData = {
       whereclause: whereclause,
@@ -42,8 +39,6 @@ export async function PATCH(
       body: JSON.stringify(updateData),
     });
 
-    console.log("Response status:", response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Maximo API error:", errorText);
@@ -58,7 +53,6 @@ export async function PATCH(
     }
 
     const result = await response.json();
-    console.log("Relationship updated successfully");
 
     return NextResponse.json({
       success: true,
@@ -76,5 +70,3 @@ export async function PATCH(
     );
   }
 }
-
-// Made with Bob

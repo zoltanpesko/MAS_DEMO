@@ -21,10 +21,7 @@ export async function GET(
     const resolvedParams = await params;
     const scriptId = resolvedParams.id;
     
-    // Maximo REST API endpoint for a specific script
     const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIAUTOSCRIPT/${scriptId}?apikey=${apiKey}`;
-
-    console.log('Fetching script details:', scriptId);
 
     const response = await fetch(maximoUrl, {
       method: 'GET',
@@ -38,8 +35,8 @@ export async function GET(
       const errorText = await response.text();
       console.error('Maximo API error:', response.status, errorText);
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: `Maximo API error: ${response.status}`,
           details: errorText.substring(0, 1000)
         },
@@ -48,7 +45,6 @@ export async function GET(
     }
 
     const data = await response.json();
-    console.log('Successfully fetched script details');
 
     return NextResponse.json({
       success: true,
@@ -81,11 +77,6 @@ export async function PATCH(
     const resolvedParams = await params;
     const scriptId = resolvedParams.id;
     
-    console.log('=== UPDATE SCRIPT REQUEST ===');
-    console.log('Script ID:', scriptId);
-    console.log('New source length:', source.length, 'characters');
-
-    // Maximo REST API endpoint
     const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIAUTOSCRIPT/${scriptId}?apikey=${apiKey}`;
 
     const response = await fetch(maximoUrl, {
@@ -102,14 +93,12 @@ export async function PATCH(
       }),
     });
 
-    console.log('Update response status:', response.status);
-
     if (!response.ok) {
       const responseText = await response.text();
       console.error('Maximo API error:', response.status, responseText);
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: `Failed to update script: ${response.status}`,
           details: responseText.substring(0, 1000)
         },
@@ -117,9 +106,7 @@ export async function PATCH(
       );
     }
 
-    // Handle 204 No Content
     if (response.status === 204) {
-      console.log('✅ Successfully updated script (204 No Content)');
       return NextResponse.json({
         success: true,
         message: 'Script updated successfully',
@@ -130,7 +117,6 @@ export async function PATCH(
     let data;
     try {
       data = responseText ? JSON.parse(responseText) : {};
-      console.log('✅ Successfully updated script');
     } catch (parseError) {
       return NextResponse.json({
         success: true,
@@ -150,5 +136,3 @@ export async function PATCH(
     );
   }
 }
-
-// Made with Bob

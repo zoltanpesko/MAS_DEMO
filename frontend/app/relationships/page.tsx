@@ -144,7 +144,6 @@ export default function RelationshipsPage() {
         setStatus({ type: "error", message: "⚠️ No parent objects found" });
       }
     } catch (error: any) {
-      console.error("Error loading parent objects:", error);
       setStatus({ type: "error", message: `❌ Error: ${error.message}` });
     } finally {
       setLoadingParents(false);
@@ -216,7 +215,6 @@ export default function RelationshipsPage() {
         setStatus({ type: "error", message: "⚠️ No relationships found" });
       }
     } catch (error: any) {
-      console.error("Error loading relationships:", error);
       setStatus({ type: "error", message: `❌ Error: ${error.message}` });
     } finally {
       setLoading(false);
@@ -334,7 +332,6 @@ export default function RelationshipsPage() {
         throw new Error(result.error || "Failed to save relationship");
       }
     } catch (error: any) {
-      console.error("Error saving relationship:", error);
       setStatus({ type: "error", message: `❌ Save error: ${error.message}` });
     } finally {
       setSaving(false);
@@ -389,7 +386,7 @@ export default function RelationshipsPage() {
             }
           }
         } catch (error) {
-          console.error(`Error analyzing ${relationship.name}:`, error);
+          // Skip failed analyses
         }
       }
 
@@ -405,7 +402,6 @@ export default function RelationshipsPage() {
         message: `✅ Analysis complete! Found ${analysisResults.length} relationships with optimization opportunities. Showing top 10.`,
       });
     } catch (error: any) {
-      console.error("Error analyzing relationships:", error);
       setStatus({ type: "error", message: `❌ Analysis error: ${error.message}` });
     } finally {
       setAnalyzingAll(false);
@@ -816,5 +812,3 @@ export default function RelationshipsPage() {
     </div>
   );
 }
-
-// Made with Bob

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Disable SSL verification for demo purposes
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -19,13 +22,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Construct the Maximo API URL for creating a new script
     const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIAUTOSCRIPT`;
     const url = `${maximoUrl}?apikey=${apiKey}&lean=1`;
 
-    console.log("Creating new script in Maximo:", autoscript);
-
-    // Prepare the script data
     const scriptData = {
       autoscript: autoscript.toUpperCase(),
       description: description || "",
@@ -35,7 +34,6 @@ export async function POST(request: NextRequest) {
       source: source || "",
     };
 
-    // Make POST request to Maximo to create the script
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -44,14 +42,6 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify(scriptData),
     });
-
-    console.log("Response status:", response.status);
-
-    const responseHeaders: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      responseHeaders[key] = value;
-    });
-    console.log("Response headers:", responseHeaders);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -67,7 +57,6 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json();
-    console.log("Script created successfully:", result);
 
     return NextResponse.json({
       success: true,
@@ -85,5 +74,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-// Made with Bob

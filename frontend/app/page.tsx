@@ -134,7 +134,6 @@ export default function Home() {
         message: "✅ Successfully loaded user and system information",
       });
     } catch (error: any) {
-      console.error("Error loading info:", error);
       setStatus({ type: "error", message: `❌ Error: ${error.message}` });
     } finally {
       setLoading(false);
@@ -393,5 +392,3 @@ export default function Home() {
     </main>
   );
 }
-
-// Made with Bob

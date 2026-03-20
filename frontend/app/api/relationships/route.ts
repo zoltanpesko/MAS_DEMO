@@ -19,15 +19,11 @@ export async function GET(request: NextRequest) {
 
     const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIDB`;
     
-    // Build URL with optional parent filter
     let url = `${maximoUrl}?apikey=${apiKey}&lean=1&oslc.select=name,parent,child,whereclause,cardinality,remarks,maxrelationshipid&oslc.pageSize=${pageSize}`;
     
     if (parent) {
-      // Add WHERE clause to filter by parent
       url += `&oslc.where=parent="${parent}"`;
     }
-
-    console.log("Fetching relationships from Maximo:", maximoUrl);
 
     const response = await fetch(url, {
       method: "GET",
@@ -35,14 +31,6 @@ export async function GET(request: NextRequest) {
         Accept: "application/json",
       },
     });
-
-    console.log("Response status:", response.status);
-
-    const responseHeaders: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      responseHeaders[key] = value;
-    });
-    console.log("Response headers:", responseHeaders);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -57,8 +45,6 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log("Response body (first 500 chars):", JSON.stringify(data).substring(0, 500));
-    console.log("Successfully fetched relationships from Maximo");
 
     return NextResponse.json({
       success: true,
@@ -76,5 +62,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-// Made with Bob

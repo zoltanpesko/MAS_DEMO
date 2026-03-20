@@ -18,16 +18,12 @@ export async function GET(request: NextRequest) {
     const maximoUrl = `${serverUrl}/maximo/api/systeminfo`;
     const url = `${maximoUrl}?apikey=${apiKey}`;
 
-    console.log("Fetching systeminfo from Maximo:", maximoUrl);
-
     const response = await fetch(url, {
       method: "GET",
       headers: {
         Accept: "application/json",
       },
     });
-
-    console.log("Response status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -42,8 +38,6 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log("Successfully fetched systeminfo from Maximo");
-    console.log("System info data:", JSON.stringify(data, null, 2));
 
     return NextResponse.json({
       success: true,
@@ -60,5 +54,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-// Made with Bob

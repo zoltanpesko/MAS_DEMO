@@ -15,14 +15,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get query parameters
     const { searchParams } = new URL(request.url);
     const pageSize = searchParams.get('pageSize') || '50';
 
-    // Maximo REST API endpoint for automation scripts
     const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIAUTOSCRIPT?apikey=${apiKey}&lean=1&oslc.select=autoscript,description,scriptlanguage,active,status,source&oslc.pageSize=${pageSize}`;
-
-    console.log('Fetching automation scripts from Maximo:', maximoUrl.replace(apiKey, '***'));
 
     const response = await fetch(maximoUrl, {
       method: 'GET',
@@ -32,15 +28,12 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Maximo API error:', response.status, errorText);
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: `Maximo API error: ${response.status}`,
           details: errorText.substring(0, 1000)
         },
@@ -49,8 +42,6 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('Response body (first 500 chars):', JSON.stringify(data).substring(0, 500));
-    console.log('Successfully fetched automation scripts from Maximo');
 
     return NextResponse.json({
       success: true,
@@ -65,5 +56,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-// Made with Bob

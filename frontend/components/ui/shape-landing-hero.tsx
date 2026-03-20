@@ -200,5 +200,3 @@ function HeroGeometric({
 }
 
 export { HeroGeometric }
-
-// Made with Bob

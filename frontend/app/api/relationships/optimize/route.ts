@@ -114,8 +114,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Analyzing WHERE clause for DB2 optimization:", whereclause);
-
     const analysis = analyzeDB2WhereClause(whereclause);
 
     return NextResponse.json({
@@ -139,5 +137,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-// Made with Bob

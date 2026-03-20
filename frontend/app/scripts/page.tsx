@@ -151,7 +151,6 @@ export default function ScriptsPage() {
         setStatus({ type: "error", message: "⚠️ No scripts found" });
       }
     } catch (error: any) {
-      console.error("Error loading scripts:", error);
       setStatus({ type: "error", message: `❌ Error: ${error.message}` });
     } finally {
       setLoading(false);
@@ -237,7 +236,6 @@ export default function ScriptsPage() {
         throw new Error(result.error || "Failed to create script");
       }
     } catch (error: any) {
-      console.error("Error creating script:", error);
       setStatus({ type: "error", message: `❌ Create error: ${error.message}` });
     } finally {
       setSaving(false);
@@ -311,7 +309,6 @@ export default function ScriptsPage() {
         throw new Error(result.error || "Failed to save script");
       }
     } catch (error: any) {
-      console.error("Error saving script:", error);
       setStatus({ type: "error", message: `❌ Save error: ${error.message}` });
     } finally {
       setSaving(false);
@@ -768,5 +765,3 @@ export default function ScriptsPage() {
     </div>
   );
 }
-
-// Made with Bob

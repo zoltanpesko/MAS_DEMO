@@ -126,7 +126,6 @@ export default function AssetsPage() {
         return null;
       }
     } catch (error: any) {
-      console.error("Error loading assets:", error);
       setStatus({ type: "error", message: `❌ Error: ${error.message}` });
       return null;
     } finally {
@@ -193,7 +192,6 @@ export default function AssetsPage() {
         message: `✅ Successfully downloaded ${largeAssets.length} assets as CSV`,
       });
     } catch (error: any) {
-      console.error("Error downloading assets:", error);
       setStatus({ type: "error", message: `❌ Download error: ${error.message}` });
     } finally {
       setDownloadingLarge(false);
@@ -272,7 +270,6 @@ export default function AssetsPage() {
         throw new Error(result.error || "Failed to update field");
       }
     } catch (error: any) {
-      console.error("Error updating field:", error);
       setStatus({ type: "error", message: `❌ Update error: ${error.message}` });
     } finally {
       setUpdating(false);
@@ -619,5 +616,3 @@ export default function AssetsPage() {
     </div>
   );
 }
-
-// Made with Bob
