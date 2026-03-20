@@ -93,35 +93,92 @@ echo "Note: This will build the Docker image from your Git repository"
 # Start the build
 BUILD_NAME=$(oc start-build mas-vendor-page -o name)
 echo "Build started: $BUILD_NAME"
-
-# Wait for build to start
-echo "Waiting for build to start..."
-sleep 5
-
-# Follow the build logs with timeout handling
-echo "Following build logs..."
-if ! timeout 600 oc logs -f "$BUILD_NAME" 2>&1; then
-    echo "Warning: Build log streaming timed out or failed"
-    echo "Checking build status..."
-fi
-
-# Check final build status
 echo ""
-echo "Checking build status..."
-BUILD_STATUS=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}')
-echo "Build status: $BUILD_STATUS"
 
-if [ "$BUILD_STATUS" != "Complete" ]; then
-    echo "Error: Build did not complete successfully"
-    echo "Build details:"
+# Wait for build to be scheduled and start
+echo "Waiting for build to be scheduled..."
+MAX_WAIT=60
+WAITED=0
+while [ $WAITED -lt $MAX_WAIT ]; do
+    BUILD_PHASE=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+    if [ "$BUILD_PHASE" = "Running" ] || [ "$BUILD_PHASE" = "Complete" ] || [ "$BUILD_PHASE" = "Failed" ]; then
+        break
+    fi
+    echo "Build phase: $BUILD_PHASE (waiting...)"
+    sleep 5
+    WAITED=$((WAITED + 5))
+done
+
+BUILD_PHASE=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+echo "Build phase: $BUILD_PHASE"
+echo ""
+
+if [ "$BUILD_PHASE" = "Failed" ]; then
+    echo "Error: Build failed to start"
     oc describe "$BUILD_NAME"
-    echo ""
-    echo "Recent build logs:"
-    oc logs "$BUILD_NAME" --tail=50
     exit 1
 fi
 
+# Follow the build logs
+echo "=========================================="
+echo "Following build logs (this may take 3-5 minutes)..."
+echo "=========================================="
+echo ""
+
+# Try to follow logs, but don't fail if it times out
+oc logs -f "$BUILD_NAME" 2>&1 || {
+    echo ""
+    echo "Note: Log streaming ended or timed out"
+    echo "Checking build status..."
+}
+
+# Wait a bit and check final status
+echo ""
+echo "Waiting for build to complete..."
+sleep 10
+
+# Poll for build completion with status updates
+MAX_BUILD_TIME=600  # 10 minutes
+BUILD_TIME=0
+while [ $BUILD_TIME -lt $MAX_BUILD_TIME ]; do
+    BUILD_STATUS=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+    
+    if [ "$BUILD_STATUS" = "Complete" ]; then
+        echo "✓ Build completed successfully!"
+        break
+    elif [ "$BUILD_STATUS" = "Failed" ] || [ "$BUILD_STATUS" = "Error" ] || [ "$BUILD_STATUS" = "Cancelled" ]; then
+        echo "✗ Build failed with status: $BUILD_STATUS"
+        echo ""
+        echo "Build details:"
+        oc describe "$BUILD_NAME"
+        echo ""
+        echo "Recent build logs:"
+        oc logs "$BUILD_NAME" --tail=100
+        exit 1
+    else
+        echo "Build status: $BUILD_STATUS (elapsed: ${BUILD_TIME}s)"
+        sleep 15
+        BUILD_TIME=$((BUILD_TIME + 15))
+    fi
+done
+
+# Final status check
+BUILD_STATUS=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}')
+if [ "$BUILD_STATUS" != "Complete" ]; then
+    echo "Error: Build did not complete within timeout"
+    echo "Current status: $BUILD_STATUS"
+    echo ""
+    echo "Build details:"
+    oc describe "$BUILD_NAME"
+    echo ""
+    echo "You can continue monitoring with: oc logs -f $BUILD_NAME"
+    exit 1
+fi
+
+echo ""
+echo "=========================================="
 echo "Build completed successfully!"
+echo "=========================================="
 
 echo ""
 echo "Step 4: Creating Deployment..."
