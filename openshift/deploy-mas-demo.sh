@@ -61,7 +61,14 @@ if [ -n "$EXISTING_RESOURCES" ]; then
         oc delete deployment mas-vendor-page 2>/dev/null || echo "    No deployment to delete"
         
         echo "  - Deleting build pods..."
-        oc delete pods -l openshift.io/build.name --force --grace-period=0 2>/dev/null || echo "    No build pods to delete"
+        # Delete all mas-vendor-page build pods by name pattern
+        BUILD_PODS=$(oc get pods -o name 2>/dev/null | grep "mas-vendor-page.*-build" || echo "")
+        if [ -n "$BUILD_PODS" ]; then
+            echo "$BUILD_PODS" | xargs oc delete --force --grace-period=0 2>/dev/null || echo "    Failed to delete some build pods"
+            echo "    Deleted build pods"
+        else
+            echo "    No build pods to delete"
+        fi
         
         echo "  - Deleting builds..."
         oc delete builds -l buildconfig=mas-vendor-page --all 2>/dev/null || echo "    No builds to delete"
