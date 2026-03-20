@@ -87,68 +87,23 @@ echo "Step 2: Creating BuildConfig..."
 oc apply -f buildconfig.yaml
 
 echo ""
-echo "Step 3: Checking build status..."
+echo "Step 3: Starting build..."
 echo ""
 
-# Check if there's already a running build pod
-RUNNING_BUILD_POD=$(oc get pods -l openshift.io/build.name --field-selector=status.phase=Running -o name 2>/dev/null | grep "mas-vendor-page.*-build" || echo "")
+# Start the build
+BUILD_NAME=$(oc start-build mas-vendor-page -o name)
+echo "Build started: $BUILD_NAME"
+echo ""
 
-if [ -n "$RUNNING_BUILD_POD" ]; then
-    echo "Found running build pod: $RUNNING_BUILD_POD"
-    
-    # Extract build name from pod name (remove 'pod/' prefix and '-build' suffix)
-    EXISTING_BUILD=$(echo "$RUNNING_BUILD_POD" | sed 's|pod/||' | sed 's|-build$||')
-    echo "Using existing build: $EXISTING_BUILD"
-    BUILD_NAME="build/$EXISTING_BUILD"
-    echo ""
-    echo "Waiting for build to complete..."
-    
-    # Wait for existing build to complete
-    MAX_WAIT=600
-    WAITED=0
-    while [ $WAITED -lt $MAX_WAIT ]; do
-        BUILD_STATUS=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
-        if [ "$BUILD_STATUS" = "Complete" ] || [ "$BUILD_STATUS" = "Failed" ] || [ "$BUILD_STATUS" = "Error" ] || [ "$BUILD_STATUS" = "Cancelled" ]; then
-            echo "Build finished with status: $BUILD_STATUS"
-            break
-        fi
-        echo "Build status: $BUILD_STATUS (waited ${WAITED}s)"
-        sleep 15
-        WAITED=$((WAITED + 15))
-    done
-    echo ""
-else
-    # Check for recent completed build
-    LATEST_BUILD=$(oc get builds -l app=mas-vendor-page --sort-by=.metadata.creationTimestamp -o name 2>/dev/null | tail -1)
-    
-    if [ -n "$LATEST_BUILD" ]; then
-        LATEST_BUILD_STATUS=$(oc get "$LATEST_BUILD" -o jsonpath='{.status.phase}' 2>/dev/null)
-        LATEST_BUILD_TIME=$(oc get "$LATEST_BUILD" -o jsonpath='{.status.completionTimestamp}' 2>/dev/null)
-        
-        if [ "$LATEST_BUILD_STATUS" = "Complete" ]; then
-            echo "Found recent successful build: $LATEST_BUILD"
-            echo "Completed at: $LATEST_BUILD_TIME"
-            echo "Using existing build image instead of creating new build"
-            BUILD_NAME="$LATEST_BUILD"
-            echo ""
-        else
-            echo "Latest build status: $LATEST_BUILD_STATUS"
-            echo "Starting new build..."
-            BUILD_NAME=$(oc start-build mas-vendor-page -o name)
-            echo "Build started: $BUILD_NAME"
-            echo ""
-        fi
-    else
-        echo "No existing builds found"
-        echo "Starting new build..."
-        BUILD_NAME=$(oc start-build mas-vendor-page -o name)
-        echo "Build started: $BUILD_NAME"
-        echo ""
-    fi
-fi
+# Wait a moment for the build pod to be created
+sleep 3
 
 # Spinner characters for progress indication
 SPINNER_CHARS="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
+# Extract build number from BUILD_NAME (e.g., build.build.openshift.io/mas-vendor-page-1 -> mas-vendor-page-1)
+BUILD_NUMBER=$(echo "$BUILD_NAME" | sed 's|build.build.openshift.io/||')
+BUILD_POD_NAME="${BUILD_NUMBER}-build"
 
 # Check if build is already complete
 BUILD_STATUS=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
@@ -157,30 +112,36 @@ if [ "$BUILD_STATUS" = "Complete" ]; then
     echo "✓ Build already completed successfully!"
     echo ""
 else
-    # Wait for build to be scheduled and start
-    echo "⏳ Waiting for build to start..."
+    # Wait for build pod to be created and start
+    echo "⏳ Waiting for build pod to start..."
     MAX_WAIT=60
     WAITED=0
     SPIN_IDX=0
     
     while [ $WAITED -lt $MAX_WAIT ]; do
+        # Check pod status first (more accurate than build resource status)
+        POD_STATUS=$(oc get pod "$BUILD_POD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
         BUILD_PHASE=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
-        if [ "$BUILD_PHASE" = "Running" ] || [ "$BUILD_PHASE" = "Complete" ] || [ "$BUILD_PHASE" = "Failed" ]; then
+        
+        if [ "$POD_STATUS" = "Running" ] || [ "$POD_STATUS" = "Succeeded" ] || [ "$BUILD_PHASE" = "Complete" ] || [ "$BUILD_PHASE" = "Failed" ]; then
             echo ""
+            echo "Build pod status: $POD_STATUS"
             break
         fi
+        
         SPINNER_CHAR=$(echo "$SPINNER_CHARS" | cut -c$((SPIN_IDX + 1)))
-        printf "\r$SPINNER_CHAR Build phase: $BUILD_PHASE (${WAITED}s)"
+        printf "\r$SPINNER_CHAR Build pod: $POD_STATUS | Build: $BUILD_PHASE (${WAITED}s)"
         sleep 2
         WAITED=$((WAITED + 2))
         SPIN_IDX=$(( (SPIN_IDX + 1) % 10 ))
     done
 
     BUILD_PHASE=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
-    echo "Build phase: $BUILD_PHASE"
+    POD_STATUS=$(oc get pod "$BUILD_POD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+    echo "Build phase: $BUILD_PHASE | Pod status: $POD_STATUS"
     echo ""
 
-    if [ "$BUILD_PHASE" = "Failed" ]; then
+    if [ "$BUILD_PHASE" = "Failed" ] || [ "$POD_STATUS" = "Failed" ]; then
         echo "✗ Error: Build failed to start"
         oc describe "$BUILD_NAME"
         exit 1
