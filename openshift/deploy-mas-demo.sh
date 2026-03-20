@@ -33,7 +33,7 @@ echo "Current project: $(oc project -q)"
 echo ""
 
 # Check if resources already exist
-EXISTING_RESOURCES=$(oc get all,route -l app=mas-vendor-page 2>/dev/null | grep -v "No resources found" || echo "")
+EXISTING_RESOURCES=$(oc get deployment,service,route,bc,builds,is -l app=mas-vendor-page 2>/dev/null | grep -v "No resources found" || echo "")
 
 if [ -n "$EXISTING_RESOURCES" ]; then
     echo "=========================================="
@@ -41,7 +41,7 @@ if [ -n "$EXISTING_RESOURCES" ]; then
     echo "=========================================="
     echo ""
     echo "Current resources:"
-    oc get all,route -l app=mas-vendor-page
+    oc get deployment,service,route,bc,builds,is -l app=mas-vendor-page 2>&1 | grep -v "Warning:"
     echo ""
     read -p "Delete existing deployment and redeploy? (y/n) " -n 1 -r
     echo ""
