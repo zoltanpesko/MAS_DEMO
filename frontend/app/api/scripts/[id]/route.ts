@@ -5,7 +5,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const apiKey = request.headers.get('x-mas-api-key');
@@ -18,7 +18,8 @@ export async function GET(
       );
     }
 
-    const scriptId = params.id;
+    const resolvedParams = await params;
+    const scriptId = resolvedParams.id;
     
     // Maximo REST API endpoint for a specific script
     const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIAUTOSCRIPT/${scriptId}?apikey=${apiKey}`;
@@ -64,7 +65,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
@@ -77,7 +78,8 @@ export async function PATCH(
       );
     }
 
-    const scriptId = params.id;
+    const resolvedParams = await params;
+    const scriptId = resolvedParams.id;
     
     console.log('=== UPDATE SCRIPT REQUEST ===');
     console.log('Script ID:', scriptId);

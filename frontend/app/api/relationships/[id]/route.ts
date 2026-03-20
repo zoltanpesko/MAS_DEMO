@@ -5,12 +5,13 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
     const { whereclause, serverUrl, apiKey } = body;
-    const relationshipName = params.id;
+    const resolvedParams = await params;
+    const relationshipName = resolvedParams.id;
 
     if (!serverUrl || !apiKey) {
       return NextResponse.json(
