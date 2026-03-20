@@ -116,23 +116,52 @@ echo "Pods:"
 oc get pods -l app=mas-vendor-page
 
 echo ""
-echo "Application URL:"
-ROUTE_URL=$(oc get route mas-vendor-page -o jsonpath='{.spec.host}' 2>/dev/null || echo "Route not found")
-if [ "$ROUTE_URL" != "Route not found" ]; then
-    echo "https://$ROUTE_URL"
+echo "=========================================="
+echo "DEPLOYMENT SUMMARY"
+echo "=========================================="
+echo ""
+
+# Get route URL
+ROUTE_URL=$(oc get route mas-vendor-page -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+
+if [ -n "$ROUTE_URL" ]; then
+    echo "✓ Application URL:"
+    echo "  https://$ROUTE_URL"
     echo ""
-    echo "Health check:"
-    echo "https://$ROUTE_URL/api/health"
+    echo "✓ Health Check:"
+    echo "  https://$ROUTE_URL/api/health"
+    echo ""
+    echo "✓ API Endpoints:"
+    echo "  Assets:         https://$ROUTE_URL/assets"
+    echo "  Scripts:        https://$ROUTE_URL/scripts"
+    echo "  Relationships:  https://$ROUTE_URL/relationships"
 else
-    echo "Error: Could not retrieve route URL"
+    echo "✗ Error: Could not retrieve route URL"
 fi
 
 echo ""
-echo "Useful commands:"
-echo "  View logs:        oc logs -f deployment/mas-vendor-page"
-echo "  Scale replicas:   oc scale deployment mas-vendor-page --replicas=3"
-echo "  Restart pods:     oc rollout restart deployment/mas-vendor-page"
-echo "  Delete all:       oc delete all -l app=mas-vendor-page"
+echo "Route Details:"
+oc get route mas-vendor-page
+
+echo ""
+echo "=========================================="
+echo "USEFUL COMMANDS"
+echo "=========================================="
+echo ""
+echo "View logs:"
+echo "  oc logs -f deployment/mas-vendor-page"
+echo ""
+echo "Scale replicas:"
+echo "  oc scale deployment mas-vendor-page --replicas=3"
+echo ""
+echo "Restart pods:"
+echo "  oc rollout restart deployment/mas-vendor-page"
+echo ""
+echo "Delete all resources:"
+echo "  oc delete all,route -l app=mas-vendor-page"
+echo ""
+echo "Trigger new build:"
+echo "  oc start-build mas-vendor-page --follow"
 
 echo ""
 echo "=========================================="
