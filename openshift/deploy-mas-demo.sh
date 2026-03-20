@@ -51,7 +51,39 @@ oc apply -f buildconfig.yaml
 echo ""
 echo "Step 3: Starting build..."
 echo "Note: This will build the Docker image from your Git repository"
-oc start-build mas-vendor-page --follow
+
+# Start the build
+BUILD_NAME=$(oc start-build mas-vendor-page -o name)
+echo "Build started: $BUILD_NAME"
+
+# Wait for build to start
+echo "Waiting for build to start..."
+sleep 5
+
+# Follow the build logs with timeout handling
+echo "Following build logs..."
+if ! timeout 600 oc logs -f "$BUILD_NAME" 2>&1; then
+    echo "Warning: Build log streaming timed out or failed"
+    echo "Checking build status..."
+fi
+
+# Check final build status
+echo ""
+echo "Checking build status..."
+BUILD_STATUS=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}')
+echo "Build status: $BUILD_STATUS"
+
+if [ "$BUILD_STATUS" != "Complete" ]; then
+    echo "Error: Build did not complete successfully"
+    echo "Build details:"
+    oc describe "$BUILD_NAME"
+    echo ""
+    echo "Recent build logs:"
+    oc logs "$BUILD_NAME" --tail=50
+    exit 1
+fi
+
+echo "Build completed successfully!"
 
 echo ""
 echo "Step 4: Creating Deployment..."
