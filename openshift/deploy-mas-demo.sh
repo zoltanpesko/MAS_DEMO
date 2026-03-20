@@ -108,32 +108,33 @@ echo ""
 echo "Step 3: Checking for existing builds..."
 echo ""
 
-# Wait a moment for BuildConfig to potentially auto-trigger a build
-sleep 2
+# Wait for BuildConfig to potentially auto-trigger a build
+echo "Waiting for auto-triggered build (if any)..."
+sleep 5
 
-# Check for any running build pods first (most accurate)
-RUNNING_POD=$(oc get pods -l buildconfig=mas-vendor-page --field-selector=status.phase=Running -o name 2>/dev/null | head -1)
+# Check for any build pods (running, pending, or container creating)
+EXISTING_POD=$(oc get pods -l buildconfig=mas-vendor-page -o name 2>/dev/null | grep "mas-vendor-page.*-build" | head -1)
 
-if [ -n "$RUNNING_POD" ]; then
+if [ -n "$EXISTING_POD" ]; then
     # Extract build name from pod name (remove "pod/" prefix and "-build" suffix)
-    BUILD_NUMBER=$(echo "$RUNNING_POD" | sed 's|pod/||' | sed 's|-build$||')
+    BUILD_NUMBER=$(echo "$EXISTING_POD" | sed 's|pod/||' | sed 's|-build$||')
     BUILD_NAME="build.build.openshift.io/$BUILD_NUMBER"
-    echo "Found running build pod: $RUNNING_POD"
+    POD_STATUS=$(oc get "$EXISTING_POD" -o jsonpath='{.status.phase}' 2>/dev/null || echo "Unknown")
+    echo "✓ Found existing build pod: $EXISTING_POD (Status: $POD_STATUS)"
     echo "Using existing build: $BUILD_NAME"
     echo ""
 else
-    # Check if there's already a pending/new build
+    # Check if there's already a build resource
     EXISTING_BUILD=$(oc get builds -l buildconfig=mas-vendor-page --field-selector=status.phase!=Complete,status.phase!=Failed,status.phase!=Cancelled -o name 2>/dev/null | head -1)
     
     if [ -n "$EXISTING_BUILD" ]; then
-        echo "Found existing build: $EXISTING_BUILD"
+        echo "✓ Found existing build: $EXISTING_BUILD"
         BUILD_NAME="$EXISTING_BUILD"
         BUILD_STATUS=$(oc get "$BUILD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null)
         echo "Build status: $BUILD_STATUS"
-        echo "Using existing build instead of starting new one"
         echo ""
     else
-        echo "No running builds found, starting new build..."
+        echo "No existing builds found, starting new build..."
         BUILD_NAME=$(oc start-build mas-vendor-page -o name)
         echo "Build started: $BUILD_NAME"
         echo ""
