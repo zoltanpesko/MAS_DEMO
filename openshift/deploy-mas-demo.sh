@@ -51,14 +51,32 @@ if [ -n "$EXISTING_RESOURCES" ]; then
         echo "Deleting all resources with label app=mas-vendor-page..."
         
         # Delete in specific order to avoid issues
-        oc delete route mas-vendor-page 2>/dev/null || echo "No route to delete"
-        oc delete service mas-vendor-page 2>/dev/null || echo "No service to delete"
-        oc delete deployment mas-vendor-page 2>/dev/null || echo "No deployment to delete"
-        oc delete bc mas-vendor-page 2>/dev/null || echo "No buildconfig to delete"
-        oc delete builds -l app=mas-vendor-page 2>/dev/null || echo "No builds to delete"
-        oc delete is mas-vendor-page 2>/dev/null || echo "No imagestream to delete"
+        echo "  - Deleting route..."
+        oc delete route mas-vendor-page 2>/dev/null || echo "    No route to delete"
         
-        echo "Cleanup complete!"
+        echo "  - Deleting service..."
+        oc delete service mas-vendor-page 2>/dev/null || echo "    No service to delete"
+        
+        echo "  - Deleting deployment..."
+        oc delete deployment mas-vendor-page 2>/dev/null || echo "    No deployment to delete"
+        
+        echo "  - Deleting build pods..."
+        oc delete pods -l openshift.io/build.name --force --grace-period=0 2>/dev/null || echo "    No build pods to delete"
+        
+        echo "  - Deleting builds..."
+        oc delete builds -l buildconfig=mas-vendor-page --all 2>/dev/null || echo "    No builds to delete"
+        
+        echo "  - Deleting buildconfig..."
+        oc delete bc mas-vendor-page 2>/dev/null || echo "    No buildconfig to delete"
+        
+        echo "  - Deleting imagestream..."
+        oc delete is mas-vendor-page 2>/dev/null || echo "    No imagestream to delete"
+        
+        echo ""
+        echo "Waiting for resources to be fully removed..."
+        sleep 5
+        
+        echo "✓ Cleanup complete!"
         echo ""
     else
         echo "Deployment cancelled"
