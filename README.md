@@ -127,14 +127,6 @@ docker run -p 3000:3000 mas-vendor-page
 
 For detailed instructions, see [openshift/QUICKSTART.md](openshift/QUICKSTART.md)
 
-## 👤 Author
-
-**Zoltan Pesko** - [@zoltanpesko](https://github.com/zoltanpesko)
-
-## 📄 License
-
-MIT License
-
 ---
 
 Made with ❤️ for Maximo Application Suite
