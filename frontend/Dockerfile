@@ -31,16 +31,17 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Create user and group
-RUN groupadd --system --gid 1001 nodejs || true
-RUN useradd --system --uid 1001 --gid nodejs nextjs || true
-
-# Copy built application
+# Copy built application (OpenShift compatible - no chown needed)
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-USER nextjs
+# Set permissions for OpenShift (runs as arbitrary UID)
+RUN chmod -R g+rwX /app && \
+    chgrp -R 0 /app
+
+# OpenShift runs as arbitrary UID in group 0
+USER 1001
 
 EXPOSE 3000
 
