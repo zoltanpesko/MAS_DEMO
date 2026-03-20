@@ -25,9 +25,9 @@ spec:
       env:
       - name: NODE_ENV
         value: production
-  triggers:
-  - type: ConfigChange
-  - type: ImageChange
+  triggers: []
+  # Triggers disabled - builds are started manually by the deployment script
+  # This prevents automatic builds when BuildConfig is created
   successfulBuildsHistoryLimit: 5
   failedBuildsHistoryLimit: 5
 
