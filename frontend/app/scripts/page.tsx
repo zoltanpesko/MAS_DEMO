@@ -86,15 +86,6 @@ export default function ScriptsPage() {
   // Handle successful data fetch
   useEffect(() => {
     if (scripts.length > 0 && !isLoading && !error) {
-      const lastRefreshed = new Date(dataUpdatedAt).toLocaleString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      });
       setStatus({
         type: "success",
         message: `✅ Successfully loaded ${scripts.length} automation scripts`,
