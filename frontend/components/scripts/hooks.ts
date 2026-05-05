@@ -115,7 +115,7 @@ export function useUpdateScript() {
 
       return { previousScripts };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, variables, context) => {
       // Rollback on error
       if (context?.previousScripts) {
         queryClient.setQueryData(
@@ -124,7 +124,7 @@ export function useUpdateScript() {
         );
       }
     },
-    onSettled: (data, error, variables) => {
+    onSettled: (_data, _error, variables) => {
       // Refetch after mutation
       queryClient.invalidateQueries({ queryKey: ["scripts", variables.serverUrl, variables.apiKey] });
     },
@@ -161,7 +161,7 @@ export function useCreateScript() {
 
       return result;
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       // Invalidate and refetch scripts
       queryClient.invalidateQueries({ queryKey: ["scripts", variables.serverUrl, variables.apiKey] });
     },

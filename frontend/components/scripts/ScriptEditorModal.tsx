@@ -1,5 +1,5 @@
 import React, { memo, useState, useEffect, useCallback, useRef } from "react";
-import { X, Save, Download, RefreshCw, FileCode, Sparkles, ChevronUp, AlertCircle, CheckCircle, Info } from "lucide-react";
+import { X, Save, Download, RefreshCw, FileCode, Sparkles, AlertCircle, CheckCircle, Info } from "lucide-react";
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { javascript } from '@codemirror/lang-javascript';

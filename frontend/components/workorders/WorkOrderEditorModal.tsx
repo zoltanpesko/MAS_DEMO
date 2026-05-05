@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useUpdateWorkOrder, useUpdateWorkOrderStatus } from "./hooks";
-import { WorkOrder, WorkOrderEditorModalProps } from "./types";
+import { WorkOrderEditorModalProps } from "./types";
 import { StatusBadge } from "./StatusBadge";
 
 type MessageState = {
