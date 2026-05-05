@@ -2,7 +2,7 @@
 
 import { HeroGeometric } from "@/components/ui/shape-landing-hero";
 import Link from "next/link";
-import { Package, Code2, Settings, Save, User, Server, RefreshCw, Database } from "lucide-react";
+import { Package, Code2, Settings, Save, User, Server, RefreshCw, Database, Wrench } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface WhoAmI {
@@ -378,6 +378,13 @@ export default function Home() {
             >
               <Code2 className="w-5 h-5" />
               <span>Scripts</span>
+            </Link>
+            <Link
+              href="/workorders"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-indigo-600/90 hover:bg-indigo-500/90 text-white font-semibold transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
+            >
+              <Wrench className="w-5 h-5" />
+              <span>Work Orders</span>
             </Link>
             <Link
               href="/relationships"

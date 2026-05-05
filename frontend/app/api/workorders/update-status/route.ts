@@ -1,35 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Disable SSL verification for demo purposes
+// Disable SSL verification for demo purposes (self-signed certificates)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 // ============================================================================
 // TypeScript Interfaces
 // ============================================================================
 
-interface AutoScript {
-  autoscript: string;
-  description?: string;
-  scriptlanguage?: string;
-  source?: string;
-  active?: boolean;
-  status?: string;
-  [key: string]: any;
-}
-
-interface MaximoApiResponse {
-  member?: AutoScript[];
-  responseInfo?: {
-    totalCount?: number;
-    pagenum?: number;
-  };
-  [key: string]: any;
+interface UpdateStatusRequest {
+  wonum: string;
+  status: string;
+  serverUrl: string;
+  apiKey: string;
 }
 
 interface ApiSuccessResponse {
   success: true;
-  data: MaximoApiResponse;
-  source: string;
+  message: string;
+  wonum: string;
+  status: string;
+  data?: any;
 }
 
 interface ApiErrorResponse {
@@ -44,40 +34,22 @@ interface ApiErrorResponse {
 // ============================================================================
 
 const REQUEST_TIMEOUT_MS = 30000; // 30 seconds
-const MIN_PAGE_SIZE = 1;
-const MAX_PAGE_SIZE = 100;
-const DEFAULT_PAGE_SIZE = 20;
+
+// Common work order statuses in Maximo
+const VALID_STATUSES = [
+  'WAPPR',   // Waiting on Approval
+  'APPR',    // Approved
+  'INPRG',   // In Progress
+  'COMP',    // Complete
+  'CLOSE',   // Closed
+  'CAN',     // Canceled
+  'WMATL',   // Waiting on Material
+  'WSCH',    // Waiting to be Scheduled
+];
 
 // ============================================================================
 // Utility Functions
 // ============================================================================
-
-/**
- * Validates and normalizes the pageSize parameter
- * @param value - The pageSize value from query params
- * @returns Validated page size number
- */
-function validatePageSize(value: string | null): number {
-  if (!value) {
-    return DEFAULT_PAGE_SIZE;
-  }
-
-  const parsed = parseInt(value, 10);
-  
-  if (isNaN(parsed)) {
-    return DEFAULT_PAGE_SIZE;
-  }
-
-  if (parsed < MIN_PAGE_SIZE) {
-    return MIN_PAGE_SIZE;
-  }
-
-  if (parsed > MAX_PAGE_SIZE) {
-    return MAX_PAGE_SIZE;
-  }
-
-  return parsed;
-}
 
 /**
  * Creates an AbortController with timeout
@@ -122,49 +94,64 @@ function createErrorResponse(
   );
 }
 
+/**
+ * Validates work order status
+ * @param status - Status to validate
+ * @returns True if valid, false otherwise
+ */
+function isValidStatus(status: string): boolean {
+  return VALID_STATUSES.includes(status.toUpperCase());
+}
+
 // ============================================================================
-// Route Configuration
+// PATCH Handler - Update Work Order Status
 // ============================================================================
 
-// Enable caching for GET requests (revalidate every 60 seconds)
-export const revalidate = 60;
-
-// ============================================================================
-// GET Handler - List Automation Scripts
-// ============================================================================
-
-export async function GET(request: NextRequest): Promise<NextResponse<ApiSuccessResponse | ApiErrorResponse>> {
+export async function PATCH(request: NextRequest): Promise<NextResponse<ApiSuccessResponse | ApiErrorResponse>> {
   const { controller, cleanup } = createTimeoutController(REQUEST_TIMEOUT_MS);
 
   try {
-    // Extract authentication credentials from headers
-    const apiKey = request.headers.get('x-mas-api-key');
-    const serverUrl = request.headers.get('x-mas-server-url');
+    // Parse request body
+    const body: UpdateStatusRequest = await request.json();
+    const { wonum, status, serverUrl, apiKey } = body;
 
-    // Validate authentication credentials
-    if (!apiKey || !serverUrl) {
+    // Validate required fields
+    if (!wonum || !status || !serverUrl || !apiKey) {
       return createErrorResponse(
-        { message: 'Missing API credentials' },
-        401,
-        'AUTH_MISSING_CREDENTIALS'
+        { message: 'Missing required parameters: wonum, status, serverUrl, apiKey' },
+        400,
+        'VALIDATION_ERROR'
       );
     }
 
-    // Extract and validate query parameters
-    const { searchParams } = new URL(request.url);
-    const pageSizeParam = searchParams.get('pageSize');
-    const pageSize = validatePageSize(pageSizeParam);
+    // Validate status format (optional warning, not blocking)
+    if (!isValidStatus(status)) {
+      console.warn(`Status '${status}' is not a common Maximo work order status. Valid statuses: ${VALID_STATUSES.join(', ')}`);
+    }
 
-    // Construct Maximo API URL
-    const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIAUTOSCRIPT?apikey=${apiKey}&lean=1&oslc.select=autoscript,description,scriptlanguage,active,status,source&oslc.pageSize=${pageSize}`;
+    // Encode wonum as base64 for resource ID
+    const resourceId = Buffer.from(wonum).toString('base64');
+
+    // Construct Maximo API URL (using MXAPIWO object structure)
+    const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIWO/_${resourceId}?apikey=${apiKey}`;
+
+    // Prepare update payload with SPI namespace
+    const updatePayload = {
+      'spi:status': status
+    };
 
     // Make request to Maximo API with timeout
+    // Use POST with x-method-override header for PATCH operation
     const response = await fetch(maximoUrl, {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
+        'x-method-override': 'PATCH',
+        'patchtype': 'MERGE',
+        'Properties': 'spi:status',
       },
+      body: JSON.stringify(updatePayload),
       signal: controller.signal,
     });
 
@@ -175,7 +162,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiSuccess
       
       return createErrorResponse(
         {
-          message: `Maximo API error: ${response.status}`,
+          message: `Failed to update work order status: ${response.status} ${response.statusText}`,
           details: errorText.substring(0, 1000),
         },
         response.status,
@@ -183,26 +170,43 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiSuccess
       );
     }
 
-    // Parse response data
-    const data: MaximoApiResponse = await response.json();
-
-    // Return successful response with cache headers
-    return NextResponse.json(
-      {
+    // Handle 204 No Content response (successful update with no body)
+    if (response.status === 204) {
+      return NextResponse.json({
         success: true,
-        data: data,
-        source: 'maximo',
-      },
-      {
-        headers: {
-          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
-        },
-      }
-    );
+        message: 'Work order status updated successfully',
+        wonum: wonum,
+        status: status,
+      });
+    }
+
+    // Parse response data if available
+    const responseText = await response.text();
+    let data;
+    try {
+      data = responseText ? JSON.parse(responseText) : {};
+    } catch (parseError) {
+      console.error('Failed to parse JSON response:', parseError);
+      return NextResponse.json({
+        success: true,
+        message: 'Work order status updated successfully',
+        wonum: wonum,
+        status: status,
+      });
+    }
+
+    // Return successful response
+    return NextResponse.json({
+      success: true,
+      message: 'Work order status updated successfully',
+      wonum: wonum,
+      status: status,
+      data: data,
+    });
   } catch (error: any) {
     // Handle timeout errors
     if (error.name === 'AbortError') {
-      console.error('Request timeout fetching automation scripts');
+      console.error('Request timeout updating work order status');
       return createErrorResponse(
         { message: 'Request timeout - the server took too long to respond' },
         504,
@@ -212,7 +216,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiSuccess
 
     // Handle network errors
     if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-      console.error('Network error fetching automation scripts:', error);
+      console.error('Network error updating work order status:', error);
       return createErrorResponse(
         { message: 'Unable to connect to Maximo server' },
         503,
@@ -221,7 +225,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiSuccess
     }
 
     // Handle all other errors
-    console.error('Error fetching automation scripts:', error);
+    console.error('Error updating work order status:', error);
     return createErrorResponse(
       error,
       500,

@@ -24,9 +24,20 @@ export async function PATCH(
     const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIDB/${encodedId}`;
     const url = `${maximoUrl}?apikey=${apiKey}`;
 
-    const updateData = {
-      whereclause: whereclause,
-    };
+    // Build update data object with only provided fields
+    const updateData: { whereclause?: string } = {};
+    
+    if (whereclause !== undefined) {
+      updateData.whereclause = whereclause;
+    }
+
+    // Ensure at least one field is being updated
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { success: false, error: "No fields to update" },
+        { status: 400 }
+      );
+    }
 
     const response = await fetch(url, {
       method: "POST",

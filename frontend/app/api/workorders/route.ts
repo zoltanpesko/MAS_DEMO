@@ -1,26 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Disable SSL verification for demo purposes
+// Disable SSL verification for demo purposes (self-signed certificates)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 // ============================================================================
 // TypeScript Interfaces
 // ============================================================================
 
-interface AutoScript {
-  autoscript: string;
+interface WorkOrder {
+  // Core identification fields
+  wonum: string;
   description?: string;
-  scriptlanguage?: string;
-  source?: string;
-  active?: boolean;
   status?: string;
+  worktype?: string;
+  assetnum?: string;
+  location?: string;
+  priority?: number;
+  wopriority?: number;
+  
+  // Scheduling fields
+  schedstart?: string;
+  schedfinish?: string;
+  actstart?: string;
+  actfinish?: string;
+  
+  // Personnel fields
+  lead?: string;
+  supervisor?: string;
+  
+  // MXAPIWO: Organizational fields
+  siteid?: string;
+  orgid?: string;
+  
+  // MXAPIWO: Tracking fields
+  reportedby?: string;
+  reportdate?: string;
+  owner?: string;
+  statusdate?: string;
+  
+  // MXAPIWO: Target dates
+  targstartdate?: string;
+  targcompdate?: string;
+  
+  // MXAPIWO: Cost management - Estimated
+  estlabcost?: number;
+  estmatcost?: number;
+  estservcost?: number;
+  esttoolcost?: number;
+  estlabhrs?: number;
+  
+  // MXAPIWO: Cost management - Actual
+  actlabcost?: number;
+  actmatcost?: number;
+  actservcost?: number;
+  acttoolcost?: number;
+  actlabhrs?: number;
+  
+  [key: string]: any;
+}
+
+interface MaximoApiResponse {
+  member?: WorkOrder[];
+  responseInfo?: {
+    totalCount?: number;
+    pagenum?: number;
+  };
   [key: string]: any;
 }
 
 interface ApiSuccessResponse {
   success: true;
-  data?: AutoScript;
-  message?: string;
+  data: MaximoApiResponse;
+  source: string;
 }
 
 interface ApiErrorResponse {
@@ -35,54 +86,39 @@ interface ApiErrorResponse {
 // ============================================================================
 
 const REQUEST_TIMEOUT_MS = 30000; // 30 seconds
-const MAX_SOURCE_SIZE_BYTES = 1048576; // 1MB limit for source code
-const SCRIPT_ID_PATTERN = /^[A-Z0-9_-]+$/i; // Alphanumeric, underscores, hyphens
+const MIN_PAGE_SIZE = 1;
+const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 20;
 
 // ============================================================================
 // Utility Functions
 // ============================================================================
 
 /**
- * Validates script ID format
- * @param id - Script ID to validate
- * @returns Validation result with error message if invalid
+ * Validates and normalizes the pageSize parameter
+ * @param value - The pageSize value from query params
+ * @returns Validated page size number
  */
-function validateScriptId(id: string): { valid: boolean; error?: string } {
-  if (!id || id.trim().length === 0) {
-    return { valid: false, error: 'Script ID cannot be empty' };
+function validatePageSize(value: string | null): number {
+  if (!value) {
+    return DEFAULT_PAGE_SIZE;
   }
 
-  if (id.length > 100) {
-    return { valid: false, error: 'Script ID is too long (max 100 characters)' };
-  }
-
-  if (!SCRIPT_ID_PATTERN.test(id)) {
-    return { valid: false, error: 'Script ID contains invalid characters (use alphanumeric, underscores, or hyphens only)' };
-  }
-
-  return { valid: true };
-}
-
-/**
- * Validates source code size
- * @param source - Source code to validate
- * @returns Validation result with error message if invalid
- */
-function validateSourceCode(source: string): { valid: boolean; error?: string } {
-  if (!source) {
-    return { valid: false, error: 'Source code cannot be empty' };
-  }
-
-  const sizeInBytes = new Blob([source]).size;
+  const parsed = parseInt(value, 10);
   
-  if (sizeInBytes > MAX_SOURCE_SIZE_BYTES) {
-    return {
-      valid: false,
-      error: `Source code is too large (${(sizeInBytes / 1024).toFixed(2)}KB, max ${MAX_SOURCE_SIZE_BYTES / 1024}KB)`,
-    };
+  if (isNaN(parsed)) {
+    return DEFAULT_PAGE_SIZE;
   }
 
-  return { valid: true };
+  if (parsed < MIN_PAGE_SIZE) {
+    return MIN_PAGE_SIZE;
+  }
+
+  if (parsed > MAX_PAGE_SIZE) {
+    return MAX_PAGE_SIZE;
+  }
+
+  return parsed;
 }
 
 /**
@@ -136,13 +172,10 @@ function createErrorResponse(
 export const revalidate = 60;
 
 // ============================================================================
-// GET Handler - Get Single Automation Script
+// GET Handler - List Work Orders
 // ============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<ApiSuccessResponse | ApiErrorResponse>> {
+export async function GET(request: NextRequest): Promise<NextResponse<ApiSuccessResponse | ApiErrorResponse>> {
   const { controller, cleanup } = createTimeoutController(REQUEST_TIMEOUT_MS);
 
   try {
@@ -159,21 +192,13 @@ export async function GET(
       );
     }
 
-    // Resolve and validate script ID
-    const resolvedParams = await params;
-    const scriptId = resolvedParams.id;
-    
-    const idValidation = validateScriptId(scriptId);
-    if (!idValidation.valid) {
-      return createErrorResponse(
-        { message: idValidation.error },
-        400,
-        'INVALID_SCRIPT_ID'
-      );
-    }
+    // Extract and validate query parameters
+    const { searchParams } = new URL(request.url);
+    const pageSizeParam = searchParams.get('pageSize');
+    const pageSize = validatePageSize(pageSizeParam);
 
-    // Construct Maximo API URL
-    const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIAUTOSCRIPT/${scriptId}?apikey=${apiKey}`;
+    // Construct Maximo API URL with work order fields (using MXAPIWO object structure)
+    const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIWO?apikey=${apiKey}&lean=1&oslc.select=wonum,description,status,worktype,assetnum,location,priority,wopriority,schedstart,schedfinish,actstart,actfinish,lead,supervisor,siteid,orgid,reportedby,reportdate,owner,statusdate,targstartdate,targcompdate,estlabcost,estmatcost,estservcost,esttoolcost,estlabhrs,actlabcost,actmatcost,actservcost,acttoolcost,actlabhrs&oslc.pageSize=${pageSize}`;
 
     // Make request to Maximo API with timeout
     const response = await fetch(maximoUrl, {
@@ -190,15 +215,6 @@ export async function GET(
       const errorText = await response.text();
       console.error('Maximo API error:', response.status, errorText);
       
-      // Handle 404 specifically
-      if (response.status === 404) {
-        return createErrorResponse(
-          { message: `Script '${scriptId}' not found` },
-          404,
-          'SCRIPT_NOT_FOUND'
-        );
-      }
-      
       return createErrorResponse(
         {
           message: `Maximo API error: ${response.status}`,
@@ -210,13 +226,14 @@ export async function GET(
     }
 
     // Parse response data
-    const data: AutoScript = await response.json();
+    const data: MaximoApiResponse = await response.json();
 
     // Return successful response with cache headers
     return NextResponse.json(
       {
         success: true,
         data: data,
+        source: 'maximo',
       },
       {
         headers: {
@@ -227,7 +244,7 @@ export async function GET(
   } catch (error: any) {
     // Handle timeout errors
     if (error.name === 'AbortError') {
-      console.error('Request timeout fetching script');
+      console.error('Request timeout fetching work orders');
       return createErrorResponse(
         { message: 'Request timeout - the server took too long to respond' },
         504,
@@ -237,7 +254,7 @@ export async function GET(
 
     // Handle network errors
     if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-      console.error('Network error fetching script:', error);
+      console.error('Network error fetching work orders:', error);
       return createErrorResponse(
         { message: 'Unable to connect to Maximo server' },
         503,
@@ -246,7 +263,7 @@ export async function GET(
     }
 
     // Handle all other errors
-    console.error('Error fetching script:', error);
+    console.error('Error fetching work orders:', error);
     return createErrorResponse(
       error,
       500,
@@ -259,17 +276,14 @@ export async function GET(
 }
 
 // ============================================================================
-// PATCH Handler - Update Automation Script
+// POST Handler - Create Work Order
 // ============================================================================
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-): Promise<NextResponse<ApiSuccessResponse | ApiErrorResponse>> {
+export async function POST(request: NextRequest): Promise<NextResponse<ApiSuccessResponse | ApiErrorResponse>> {
   const { controller, cleanup } = createTimeoutController(REQUEST_TIMEOUT_MS);
 
   try {
-    // Extract authentication credentials from headers (standardized)
+    // Extract authentication credentials from headers
     const apiKey = request.headers.get('x-mas-api-key');
     const serverUrl = request.headers.get('x-mas-server-url');
 
@@ -284,42 +298,18 @@ export async function PATCH(
 
     // Parse request body
     const body = await request.json();
-    const { source } = body;
 
-    // Validate required fields
-    if (!source) {
+    // Validate required fields for work order creation
+    if (!body.description) {
       return createErrorResponse(
-        { message: 'Source code is required' },
+        { message: 'Missing required field: description' },
         400,
-        'MISSING_SOURCE'
+        'VALIDATION_ERROR'
       );
     }
 
-    // Validate source code
-    const sourceValidation = validateSourceCode(source);
-    if (!sourceValidation.valid) {
-      return createErrorResponse(
-        { message: sourceValidation.error },
-        400,
-        'INVALID_SOURCE'
-      );
-    }
-
-    // Resolve and validate script ID
-    const resolvedParams = await params;
-    const scriptId = resolvedParams.id;
-    
-    const idValidation = validateScriptId(scriptId);
-    if (!idValidation.valid) {
-      return createErrorResponse(
-        { message: idValidation.error },
-        400,
-        'INVALID_SCRIPT_ID'
-      );
-    }
-
-    // Construct Maximo API URL
-    const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIAUTOSCRIPT/${scriptId}?apikey=${apiKey}`;
+    // Construct Maximo API URL (using MXAPIWO object structure)
+    const maximoUrl = `${serverUrl}/maximo/api/os/MXAPIWO?apikey=${apiKey}`;
 
     // Make request to Maximo API with timeout
     const response = await fetch(maximoUrl, {
@@ -327,71 +317,42 @@ export async function PATCH(
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'x-method-override': 'PATCH',
-        'patchtype': 'MERGE',
-        'Properties': 'spi:source',
       },
-      body: JSON.stringify({
-        'spi:source': source
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
 
     // Handle non-OK responses from Maximo API
     if (!response.ok) {
-      const responseText = await response.text();
-      console.error('Maximo API error:', response.status, responseText);
-      
-      // Handle 404 specifically
-      if (response.status === 404) {
-        return createErrorResponse(
-          { message: `Script '${scriptId}' not found` },
-          404,
-          'SCRIPT_NOT_FOUND'
-        );
-      }
+      const errorText = await response.text();
+      console.error('Maximo API error:', response.status, errorText);
       
       return createErrorResponse(
         {
-          message: `Failed to update script: ${response.status}`,
-          details: responseText.substring(0, 1000),
+          message: `Failed to create work order: ${response.status}`,
+          details: errorText.substring(0, 1000),
         },
         response.status,
         'MAXIMO_API_ERROR'
       );
     }
 
-    // Handle 204 No Content response
-    if (response.status === 204) {
-      return NextResponse.json({
-        success: true,
-        message: 'Script updated successfully',
-      });
-    }
-
     // Parse response data
-    const responseText = await response.text();
-    let data: AutoScript | undefined;
-    
-    try {
-      data = responseText ? JSON.parse(responseText) : undefined;
-    } catch (parseError) {
-      // If parsing fails, still return success since the update worked
-      return NextResponse.json({
-        success: true,
-        message: 'Script updated successfully',
-      });
-    }
+    const data: MaximoApiResponse = await response.json();
 
-    return NextResponse.json({
-      success: true,
-      data: data,
-      message: 'Script updated successfully',
-    });
+    // Return successful response
+    return NextResponse.json(
+      {
+        success: true,
+        data: data,
+        source: 'maximo',
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     // Handle timeout errors
     if (error.name === 'AbortError') {
-      console.error('Request timeout updating script');
+      console.error('Request timeout creating work order');
       return createErrorResponse(
         { message: 'Request timeout - the server took too long to respond' },
         504,
@@ -401,7 +362,7 @@ export async function PATCH(
 
     // Handle network errors
     if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-      console.error('Network error updating script:', error);
+      console.error('Network error creating work order:', error);
       return createErrorResponse(
         { message: 'Unable to connect to Maximo server' },
         503,
@@ -410,7 +371,7 @@ export async function PATCH(
     }
 
     // Handle all other errors
-    console.error('Error updating script:', error);
+    console.error('Error creating work order:', error);
     return createErrorResponse(
       error,
       500,

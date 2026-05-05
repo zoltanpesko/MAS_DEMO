@@ -290,9 +290,9 @@ export default function RelationshipsPage() {
     if (!selectedRelationship) return;
 
     setSaving(true);
-    setStatus({ 
-      type: "info", 
-      message: `⏳ Saving ${selectedRelationship.name}...` 
+    setStatus({
+      type: "info",
+      message: `⏳ Saving ${selectedRelationship.name}...`
     });
 
     try {
