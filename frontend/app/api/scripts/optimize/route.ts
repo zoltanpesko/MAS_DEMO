@@ -310,7 +310,6 @@ function analyzeJavaScript(source: string): OptimizationSuggestion[] {
 
   // Rule 13: Check for SQL injection risks (Enhanced)
   const hasSQLConcatenation = /['"].*\+.*['"]/.test(source) && /where|select|insert|update|delete/i.test(source);
-  const hasSetWhere = /setWhere\(/i.test(source);
   
   if (hasSQLConcatenation) {
     suggestions.push({
