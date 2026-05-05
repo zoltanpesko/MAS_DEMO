@@ -132,7 +132,7 @@ function createErrorResponse(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ApiSuccessResponse | ApiErrorResponse>> {
   const { controller, cleanup } = createTimeoutController(REQUEST_TIMEOUT_MS);
 
@@ -150,8 +150,9 @@ export async function GET(
       );
     }
 
-    // Get work order number from params
-    const wonum = params.id;
+    // Resolve and get work order number from params
+    const resolvedParams = await params;
+    const wonum = resolvedParams.id;
 
     if (!wonum) {
       return createErrorResponse(
@@ -241,7 +242,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse<ApiSuccessResponse | ApiErrorResponse>> {
   const { controller, cleanup } = createTimeoutController(REQUEST_TIMEOUT_MS);
 
@@ -259,8 +260,9 @@ export async function PATCH(
       );
     }
 
-    // Get work order number from params
-    const wonum = params.id;
+    // Resolve and get work order number from params
+    const resolvedParams = await params;
+    const wonum = resolvedParams.id;
 
     if (!wonum) {
       return createErrorResponse(
