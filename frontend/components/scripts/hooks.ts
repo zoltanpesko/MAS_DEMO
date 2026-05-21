@@ -2,7 +2,7 @@
  * Custom hooks for Scripts API calls with React Query
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AutoScript, ApiResponse, NewScriptData, OptimizationResponse } from "./types";
+import { AutoScript, ApiResponse, NewScriptData, OptimizationResponse, GenerateFromJavaRequest, GeneratedScript } from "./types";
 
 interface UseScriptsOptions {
   serverUrl: string;
@@ -199,6 +199,44 @@ export function useOptimizeScript() {
       }
 
       return result;
+    },
+    retry: 1,
+  });
+}
+
+interface GenerateFromJavaResponse {
+  success: boolean;
+  data: GeneratedScript;
+  message: string;
+  error?: string;
+}
+
+/**
+ * Hook to generate a Maximo script from Java source code
+ */
+export function useGenerateFromJava() {
+  return useMutation({
+    mutationFn: async (request: GenerateFromJavaRequest): Promise<GeneratedScript> => {
+      const response = await fetch("/api/scripts/generate-from-java", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const result: GenerateFromJavaResponse = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to generate script from Java");
+      }
+
+      return result.data;
     },
     retry: 1,
   });

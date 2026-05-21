@@ -5,6 +5,8 @@ This is a Next.js frontend application with the HeroGeometric landing component 
 ## Features
 
 - **HeroGeometric Component**: Beautiful animated landing page with geometric shapes
+- **Java-to-Script Generation**: Convert Java classes to Maximo automation scripts (Python/JavaScript)
+- **Script Management**: Create, edit, and manage Maximo automation scripts
 - **Next.js 14+**: Modern React framework with App Router
 - **TypeScript**: Full type safety
 - **Tailwind CSS**: Utility-first CSS framework

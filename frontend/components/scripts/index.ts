@@ -7,6 +7,8 @@ export { ScriptCard } from "./ScriptCard";
 export { ScriptsList } from "./ScriptsList";
 export { ScriptEditorModal } from "./ScriptEditorModal";
 export { CreateScriptModal } from "./CreateScriptModal";
+export { JavaUploadModal } from "./JavaUploadModal";
+export { GeneratedScriptPreview } from "./GeneratedScriptPreview";
 export * from "./types";
 export * from "./hooks";
 

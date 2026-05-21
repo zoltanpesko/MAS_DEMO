@@ -1,10 +1,13 @@
 import React, { memo, useState, useEffect, useCallback, useRef } from "react";
-import { X, Check, RefreshCw, Plus } from "lucide-react";
+import { X, Check, RefreshCw, Plus, FileCode } from "lucide-react";
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { javascript } from '@codemirror/lang-javascript';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 import { CreateScriptModalProps, NewScriptData } from "./types";
+import { JavaUploadModal } from "./JavaUploadModal";
+import { GeneratedScriptPreview } from "./GeneratedScriptPreview";
+import { useGenerateFromJava } from "./hooks";
 
 /**
  * Create Script Modal component
@@ -24,8 +27,13 @@ export const CreateScriptModal: React.FC<CreateScriptModalProps> = memo(({
     source: "# Write your Python code here\n\n",
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [showJavaUpload, setShowJavaUpload] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [generatedScript, setGeneratedScript] = useState<any>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
+
+  const generateFromJavaMutation = useGenerateFromJava();
 
   // Reset form when modal opens
   useEffect(() => {
@@ -119,6 +127,44 @@ export const CreateScriptModal: React.FC<CreateScriptModalProps> = memo(({
     await onCreate(formData);
   }, [formData, validateForm, onCreate]);
 
+  const handleGenerateFromJava = useCallback(async (request: any) => {
+    try {
+      const result = await generateFromJavaMutation.mutateAsync(request);
+      setGeneratedScript(result);
+      setShowJavaUpload(false);
+      setShowPreview(true);
+    } catch (error) {
+      console.error("Failed to generate script from Java:", error);
+    }
+  }, [generateFromJavaMutation]);
+
+  const handleEditInEditor = useCallback((script: any) => {
+    // Pre-fill the form with generated script data
+    setFormData({
+      autoscript: script.scriptName,
+      description: script.description,
+      scriptlanguage: script.scriptLanguage,
+      source: script.source,
+    });
+    setShowPreview(false);
+  }, []);
+
+  const handleSaveToMaximo = useCallback(async (script: any) => {
+    // Create the script directly in Maximo
+    await onCreate({
+      autoscript: script.scriptName,
+      description: script.description,
+      scriptlanguage: script.scriptLanguage,
+      source: script.source,
+    });
+    setShowPreview(false);
+  }, [onCreate]);
+
+  const handleRegenerate = useCallback(() => {
+    setShowPreview(false);
+    setShowJavaUpload(true);
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -134,13 +180,23 @@ export const CreateScriptModal: React.FC<CreateScriptModalProps> = memo(({
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <h2 
-            id="create-modal-title"
-            className="text-2xl font-bold text-white flex items-center gap-2"
-          >
-            <Plus className="w-6 h-6 text-green-400" />
-            Create New Automation Script
-          </h2>
+          <div className="flex items-center gap-4">
+            <h2
+              id="create-modal-title"
+              className="text-2xl font-bold text-white flex items-center gap-2"
+            >
+              <Plus className="w-6 h-6 text-green-400" />
+              Create New Automation Script
+            </h2>
+            <button
+              onClick={() => setShowJavaUpload(true)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg hover:bg-blue-600/30 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Generate from Java"
+            >
+              <FileCode className="w-4 h-4" />
+              Generate from Java
+            </button>
+          </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -303,6 +359,27 @@ export const CreateScriptModal: React.FC<CreateScriptModalProps> = memo(({
           </button>
         </div>
       </div>
+
+      {/* Java Upload Modal */}
+      <JavaUploadModal
+        isOpen={showJavaUpload}
+        onClose={() => setShowJavaUpload(false)}
+        onGenerate={handleGenerateFromJava}
+        generating={generateFromJavaMutation.isPending}
+      />
+
+      {/* Generated Script Preview Modal */}
+      {generatedScript && (
+        <GeneratedScriptPreview
+          isOpen={showPreview}
+          onClose={() => setShowPreview(false)}
+          generatedScript={generatedScript}
+          onEditInEditor={handleEditInEditor}
+          onSaveToMaximo={handleSaveToMaximo}
+          onRegenerate={handleRegenerate}
+          saving={saving}
+        />
+      )}
     </div>
   );
 });

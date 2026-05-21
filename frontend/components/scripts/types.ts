@@ -107,4 +107,62 @@ export interface OptimizationResponse {
   error?: string;
 }
 
+// Java Generation Types
+export interface GenerationOptions {
+  targetLanguage: 'python' | 'javascript';
+  includeComments: boolean;
+  includeImports: boolean;
+  applyMaximoBestPractices: boolean;
+  generateDescription: boolean;
+}
+
+export interface ConversionWarning {
+  type: 'warning' | 'info' | 'error';
+  message: string;
+  line?: number;
+  suggestion?: string;
+}
+
+export interface GeneratedScript {
+  scriptName: string;
+  description: string;
+  scriptLanguage: 'python' | 'javascript';
+  source: string;
+  warnings: ConversionWarning[];
+  metadata: {
+    originalClassName: string;
+    generatedAt: string;
+    conversionNotes: string[];
+  };
+}
+
+export interface GenerateFromJavaRequest {
+  javaSource: string;
+  options?: Partial<GenerationOptions>;
+}
+
+export interface JavaUploadModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onGenerate: (request: GenerateFromJavaRequest) => Promise<void>;
+  generating: boolean;
+}
+
+export interface GeneratedScriptPreviewProps {
+  isOpen: boolean;
+  onClose: () => void;
+  generatedScript: GeneratedScript;
+  onEditInEditor: (script: GeneratedScript) => void;
+  onSaveToMaximo: (script: GeneratedScript) => Promise<void>;
+  onRegenerate: () => void;
+  saving: boolean;
+}
+
+export interface JavaClassAnalysis {
+  className: string;
+  methodCount: number;
+  fieldCount: number;
+  complexity: 'Low' | 'Medium' | 'High';
+}
+
 // Made with Bob
